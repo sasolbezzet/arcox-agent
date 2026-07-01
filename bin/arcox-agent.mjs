@@ -11,7 +11,7 @@ import {
   configureHermes,
   ensureAgentEnv,
   envSummary,
-  installLinuxProxyService,
+  disableLegacyProxyService,
 } from '../lib/config.mjs'
 
 process.umask(0o077)
@@ -28,9 +28,8 @@ if (command === 'setup') {
   const envPath = ensureAgentEnv(template)
   const useHermes = !args.includes('--no-hermes') && commandExists('hermes')
   const configPath = useHermes ? configureHermes() : ''
-  const service = useHermes ? installLinuxProxyService(process.argv[1]) : { installed: false }
-  if (service.installed) await waitForProxy()
-  console.log(`ARCOX setup complete.\nEnv: ${envPath}\nHermes: ${configPath || 'not configured'}\nProxy service: ${service.installed ? 'active' : 'run arcox-agent serve --port 8787'}\n\nNext:\n  1. Edit ${envPath}\n  2. Run arcox-agent doctor\n  3. Restart Hermes or run /reload-mcp`)
+  disableLegacyProxyService()
+  console.log(`ARCOX setup complete.\nEnv: ${envPath}\nHermes: ${configPath || 'not configured'}\nAI Router: https://arc-dex-bice.vercel.app/v1\n\nNext:\n  1. Edit ${envPath}\n  2. Run arcox-agent sync\n  3. Restart Hermes or run /reload-mcp`)
   process.exit(0)
 }
 
@@ -45,8 +44,6 @@ if (command === 'doctor') {
     hermesConfigured: existsSync(HERMES_CONFIG),
     mcpRuntimeInstalled: existsSync(mcpServer),
   }
-  const proxy = await waitForProxy()
-  checks.localProxy = proxy
   console.log(JSON.stringify({ ok: checks.envPermission600 && checks.evmSignerConfigured && checks.mcpRuntimeInstalled, checks, env: AGENT_ENV }, null, 2))
   process.exit(checks.envPermission600 && checks.evmSignerConfigured ? 0 : 1)
 }
@@ -56,14 +53,14 @@ if (command === 'serve') run(runtimeCli, ['serve', ...args])
 if (command === 'sync') {
   ensureAgentEnv(template)
   if (commandExists('hermes')) configureHermes()
-  const service = installLinuxProxyService(process.argv[1])
-  console.log(`ARCOX configuration synchronized. Proxy: ${service.installed ? 'active' : 'start manually'}.`)
+  disableLegacyProxyService()
+  console.log('ARCOX configuration synchronized with the production AI Router URL.')
   process.exit(0)
 }
 if (command === 'run') run(runtimeCli, args)
 if (!['help', '--help', '-h'].includes(command)) run(runtimeCli, [command, ...args])
 
-console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup          Configure env, Hermes provider, MCP, and proxy\n  arcox-agent doctor         Verify installation without exposing secrets\n  arcox-agent sync           Reapply Hermes and proxy configuration\n  arcox-agent mcp            Start the stdio MCP server\n  arcox-agent serve          Start the local signed AI proxy\n  arcox-agent run "prompt"   Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
+console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup          Configure env, Hermes provider, and MCP\n  arcox-agent doctor         Verify installation without exposing secrets\n  arcox-agent sync           Reapply Hermes and MCP configuration\n  arcox-agent mcp            Start the stdio MCP server\n  arcox-agent run "prompt"   Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
 
 function run(script, childArgs) {
   ensureAgentEnv(template)
@@ -73,14 +70,4 @@ function run(script, childArgs) {
     env: { ...process.env, ARCOX_AGENT_ENV: AGENT_ENV },
   })
   process.exit(result.status ?? 1)
-}
-
-async function waitForProxy() {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    try {
-      if ((await fetch('http://127.0.0.1:8787/health', { signal: AbortSignal.timeout(1500) })).ok) return true
-    } catch {}
-    await new Promise(resolve => setTimeout(resolve, 500))
-  }
-  return false
 }
