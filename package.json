@@ -1,0 +1,35 @@
+{
+  "name": "arcox-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "One-command ARCOX Agent and MCP setup for Hermes.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sasolbezzet/arcox-agent.git"
+  },
+  "homepage": "https://arc-dex-bice.vercel.app/?page=docs",
+  "keywords": ["arcox", "arc", "hermes", "mcp", "agent", "circle"],
+  "bin": {
+    "arcox-agent": "bin/arcox-agent.mjs"
+  },
+  "files": ["bin", "lib", "templates", "README.md", "LICENSE"],
+  "scripts": {
+    "check": "node --check bin/arcox-agent.mjs && node --check lib/config.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "arcox-mcp": "^0.1.34",
+    "yaml": "^2.8.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1",
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
