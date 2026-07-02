@@ -20,5 +20,8 @@ test('Hermes config shape uses production provider and stdio MCP', async () => {
   assert.equal(yaml.providers.arcox.base_url, 'https://arc-dex-bice.vercel.app/v1')
   assert.equal(yaml.providers.arcox.api_key, 'arx_sk_test')
   assert.deepEqual(yaml.mcp_servers.arcox.args, ['mcp'])
+  assert.equal(yaml.mcp_servers.arcox.connect_timeout, 90)
+  assert.equal(yaml.mcp_servers.arcox.timeout, 180)
   assert.equal(statSync(config.AGENT_ENV).mode & 0o777, 0o600)
+  assert.equal(config.hermesSummary().productionProvider, true)
 })
