@@ -19,6 +19,8 @@ Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp
 - Adds the `arcox` stdio MCP server to Hermes.
 - Adds the `custom:arcox` OpenAI-compatible provider using `https://arc-dex-bice.vercel.app/v1`.
 - Reads the ARCOX bearer API key from the protected env during `setup` or `sync`.
+- Exposes all enabled Hermes CLI and ARCOX MCP tools directly to the model.
+- Keeps model authentication separate from local transaction authorization.
 - Installs the ARCOX stdio MCP server without a local AI session proxy.
 
 ## Required env
@@ -26,9 +28,11 @@ Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp
 ```bash
 EOA_PRIVATE_KEY=
 ARCOX_AI_ROUTER_API_KEY=
+# Optional when Hermes should use a different ARCOX model credential:
+ARCOX_HERMES_API_KEY=
 ```
 
-`EOA_PRIVATE_KEY` stays on the user's machine. `ARCOX_AI_ROUTER_API_KEY` is created by ARCOX AI Router and stored only in the local protected env. Solana is optional.
+`EOA_PRIVATE_KEY` stays on the user's machine and exclusively authorizes local MCP transactions. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is used only for model access and may be different. Solana is optional.
 
 ## Hermes
 
