@@ -34,6 +34,19 @@ ARCOX_HERMES_API_KEY=
 
 `EOA_PRIVATE_KEY` stays on the user's machine and exclusively authorizes local MCP transactions. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is used only for model access and may be different. Solana is optional.
 
+## Environment boundary
+
+- `~/.arcox/agent.env`: local wallet signers and Hermes/AI Router client credentials.
+- `arc-dex/.env`: public `VITE_*` browser build configuration only.
+- `arc-dex-api/.env`: server provider, treasury delegate, webhook, and database configuration only.
+
+Do not source either dApp env file from the agent. Do not copy `EOA_PRIVATE_KEY`,
+`SOLANA_PRIVATE_KEY`, or `ARCOX_HERMES_API_KEY` into a dApp repository.
+
+The former agent subtree from `arc-dex` is preserved under
+`archive/arc-dex-agent-legacy/` for deployment and contract history. It is not
+part of the published npm package and must not be used as a second runtime.
+
 ## Hermes
 
 Use Hermes normally:
