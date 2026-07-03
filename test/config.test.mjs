@@ -29,6 +29,7 @@ test('Hermes config shape uses production provider and stdio MCP', async () => {
   assert.equal(yaml.mcp_discovery_timeout, 10)
   assert.equal(yaml.platform_toolsets.cli.includes('terminal'), true)
   assert.equal(yaml.platform_toolsets.cli.includes('web'), true)
+  assert.equal(yaml.platform_toolsets.cli.includes('context_engine'), true)
   assert.equal(yaml.platform_toolsets.cli.includes('messaging'), false)
   assert.equal(yaml.auxiliary.title_generation.provider, 'nvidia')
   assert.equal(statSync(config.AGENT_ENV).mode & 0o777, 0o600)
