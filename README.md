@@ -17,7 +17,7 @@ Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp
 
 - Creates `~/.arcox/agent.env` with permission `600` without overwriting an existing file.
 - Adds the `arcox` stdio MCP server to Hermes.
-- Adds the `custom:arcox` OpenAI-compatible provider using `https://arc-dex-bice.vercel.app/v1`.
+- Adds a normal Hermes custom provider named `ARCOX User` using `https://arc-dex-bice.vercel.app/v1` and `openai/gpt-oss-120b`.
 - Reads the ARCOX bearer API key from the protected env during `setup` or `sync`.
 - Exposes all enabled Hermes CLI and ARCOX MCP tools directly to the model.
 - Keeps model authentication separate from local transaction authorization.
