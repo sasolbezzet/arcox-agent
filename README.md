@@ -1,6 +1,6 @@
 # ARCOX Agent
 
-ARCOX Agent is the single installer for the ARCOX transaction agent, MCP server, and Hermes AI Router provider.
+ARCOX Agent is the single installer for the ARCOX transaction agent and local MCP server.
 
 ## Install
 
@@ -12,16 +12,32 @@ arcox-agent doctor
 ```
 
 Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp_arcox_*`.
+If you also want ARCOX as the Hermes model provider, either add it manually in Hermes or run `arcox-agent sync --with-provider`.
 
 ## What setup does
 
 - Creates `~/.arcox/agent.env` with permission `600` without overwriting an existing file.
 - Adds the `arcox` stdio MCP server to Hermes.
-- Adds a normal Hermes custom provider named `ARCOX User` using `https://arc-dex-bice.vercel.app/v1` and `openai/gpt-oss-120b`.
-- Reads the ARCOX bearer API key from the protected env during `setup` or `sync`.
 - Exposes all enabled Hermes CLI and ARCOX MCP tools directly to the model.
 - Keeps model authentication separate from local transaction authorization.
 - Installs the ARCOX stdio MCP server without a local AI session proxy.
+- Leaves the Hermes model provider unchanged unless `--with-provider` is used.
+
+## Optional Hermes provider
+
+By default, `setup` and `sync` only wire the local MCP server. This is the intended
+flow for a new user who wants to create an AI Router key and add a normal Hermes
+custom provider manually.
+
+To let `arcox-agent` configure the Hermes model provider from the protected env:
+
+```bash
+arcox-agent sync --with-provider
+```
+
+That adds a normal Hermes custom provider named `ARCOX User` using
+`https://arc-dex-bice.vercel.app/v1` and `openai/gpt-oss-120b`. The bearer key is
+read from `ARCOX_HERMES_API_KEY` or `ARCOX_AI_ROUTER_API_KEY`.
 
 ## Required env
 
@@ -71,8 +87,10 @@ The wallet UI may be used on mobile for wallet approvals. Hermes and MCP still r
 
 ```bash
 arcox-agent setup
+arcox-agent setup --with-provider
 arcox-agent doctor
 arcox-agent sync
+arcox-agent sync --with-provider
 arcox-agent mcp
 arcox-agent run "bridge 1 USDC from Arc to Base"
 ```
