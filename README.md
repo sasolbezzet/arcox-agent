@@ -11,6 +11,9 @@ nano ~/.arcox/agent.env
 arcox-agent doctor
 ```
 
+`npm install -g arcox-agent` automatically installs `arcox-mcp`. End users do not need
+to install `arcox-mcp` separately unless they explicitly want only the low-level MCP package.
+
 Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp_arcox_*`.
 If you also want ARCOX as the Hermes model provider, either add it manually in Hermes or run `arcox-agent sync --with-provider`.
 
