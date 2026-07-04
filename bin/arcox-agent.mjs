@@ -24,6 +24,12 @@ const here = dirname(fileURLToPath(import.meta.url))
 const template = join(here, '..', 'templates', 'agent.env.example')
 const command = process.argv[2] || 'help'
 const args = process.argv.slice(3)
+const wantsHelp = args.includes('--help') || args.includes('-h')
+
+if (wantsHelp && ['setup', 'sync', 'doctor', 'mcp', 'serve', 'run'].includes(command)) {
+  console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup [--with-provider]    Configure env and Hermes MCP\n  arcox-agent doctor                     Verify installation without exposing secrets\n  arcox-agent sync [--with-provider]     Reapply Hermes MCP and optional provider\n  arcox-agent mcp                        Start the stdio MCP server\n  arcox-agent run "prompt"               Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
+  process.exit(0)
+}
 
 if (command === 'setup') {
   const envPath = ensureAgentEnv(template)
