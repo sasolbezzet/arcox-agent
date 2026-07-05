@@ -61,3 +61,19 @@ test('Hermes provider setup remains available when explicitly requested', async 
   assert.equal(config.hermesSummary().mcpConfigured, true)
   assert.equal(config.hermesSummary().productionProvider, true)
 })
+
+test('API key rotation updates protected env and Hermes without exposing another file', async () => {
+  const { root, template } = setupIsolatedEnv()
+  const config = await import(`../lib/config.mjs?test=${Date.now()}-rotation`)
+  config.ensureAgentEnv(template)
+  const replacement = 'arx_sk_replacement_key_1234567890'
+  const saved = config.updateAgentApiKey(replacement, { syncHermesKey: true })
+  config.configureHermes({ includeProvider: true })
+  const env = readFileSync(saved.env, 'utf8')
+  const yaml = parse(readFileSync(join(root, '.hermes', 'config.yaml'), 'utf8'))
+  assert.match(env, new RegExp(`^ARCOX_AI_ROUTER_API_KEY=${replacement}$`, 'm'))
+  assert.match(env, new RegExp(`^ARCOX_HERMES_API_KEY=${replacement}$`, 'm'))
+  assert.equal(statSync(saved.env).mode & 0o777, 0o600)
+  assert.equal(yaml.model.api_key, replacement)
+  assert.equal(saved.keyPreview.includes(replacement), false)
+})
