@@ -17,12 +17,6 @@ to install `arcox-mcp` separately unless they explicitly want only the low-level
 Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp_arcox_*`.
 If you also want ARCOX as the Hermes model provider, either add it manually in Hermes or run `arcox-agent sync --with-provider`.
 
-If an AI Router key is revoked, rotate and store a replacement without printing the full secret:
-
-```bash
-arcox-agent rotate-api-key --sync-provider
-```
-
 ## What setup does
 
 - Creates `~/.arcox/agent.env` with permission `600` without overwriting an existing file.
