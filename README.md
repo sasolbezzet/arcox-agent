@@ -47,11 +47,14 @@ read from `ARCOX_HERMES_API_KEY` or `ARCOX_AI_ROUTER_API_KEY`.
 ```bash
 EOA_PRIVATE_KEY=
 ARCOX_AI_ROUTER_API_KEY=
+ARC_RPC=https://rpc.testnet.arc.network
 # Optional when Hermes should use a different ARCOX model credential:
 ARCOX_HERMES_API_KEY=
 ```
 
 `EOA_PRIVATE_KEY` stays on the user's machine and exclusively authorizes local MCP transactions. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is used only for model access and may be different. Solana is optional.
+
+`ARC_RPC` harus menggunakan `https://rpc.testnet.arc.network` (RPC publik sinkron). Jangan pakai `arc-node.thecanteenapp.com` karena tertinggal ~1 blok dan menyebabkan nonce konflik pada transaksi x402 dan swap/bridge/send.
 
 ## Environment boundary
 
