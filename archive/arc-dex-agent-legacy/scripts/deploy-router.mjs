@@ -19,8 +19,8 @@ const chains = {
   Arc_Testnet: {
     domain: 26,
     usdc: '0x3600000000000000000000000000000000000000',
-    rpc: process.env.ARC_RPC || 'https://rpc.testnet.arc.network/',
-    chain: defineChain({ id: 5042002, name: 'Arc Testnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: { default: { http: [process.env.ARC_RPC || 'https://rpc.testnet.arc.network/'] } } }),
+    rpc: process.env.ARC_RPC || 'https://rpc.testnet.arc-node.thecanteenapp.com/v1/swrm_cb280d6a2612407c4a1dfc8ae235c0ae62bdfe0740559a355dcb7c48b22b345a',
+    chain: defineChain({ id: 5042002, name: 'Arc Testnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: { default: { http: [process.env.ARC_RPC || 'https://rpc.testnet.arc-node.thecanteenapp.com/v1/swrm_cb280d6a2612407c4a1dfc8ae235c0ae62bdfe0740559a355dcb7c48b22b345a'] } } }),
   },
   Ethereum_Sepolia: {
     domain: 0,
