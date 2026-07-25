@@ -1,6 +1,6 @@
 {
   "name": "arcox-agent",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "type": "module",
   "description": "One-command ARCOX Agent and MCP setup for Hermes.",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "arcox-mcp": "^0.1.50",
+    "arcox-mcp": "^0.1.52",
     "yaml": "^2.8.1"
   },
   "overrides": {
