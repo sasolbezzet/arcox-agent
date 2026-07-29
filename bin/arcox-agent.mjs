@@ -37,7 +37,7 @@ if (command === 'setup') {
   const includeProvider = args.includes('--with-provider')
   const configPath = useHermes ? configureHermes({ includeProvider }) : ''
   disableLegacyProxyService()
-  console.log(`ARCOX setup complete.\nEnv: ${envPath}\nHermes: ${configPath || 'not configured'}\nAI Router: https://arc-dex-bice.vercel.app/v1\nProvider configured: ${includeProvider ? 'yes' : 'no'}\n\nNext:\n  1. Edit ${envPath}\n  2. Run arcox-agent sync${includeProvider ? ' --with-provider' : ''}\n  3. Restart Hermes or run /reload-mcp`)
+  console.log(`ARCOX setup complete.\nEnv: ${envPath}\nHermes: ${configPath || 'not configured'}\nAI Router: https://arcoxdex.vercel.app/v1\nProvider configured: ${includeProvider ? 'yes' : 'no'}\n\nNext:\n  1. Edit ${envPath}\n  2. Run arcox-agent sync${includeProvider ? ' --with-provider' : ''}\n  3. Restart Hermes or run /reload-mcp`)
   process.exit(0)
 }
 

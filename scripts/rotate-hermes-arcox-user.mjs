@@ -10,7 +10,7 @@ const hermesConfigPath = join(homedir(), '.hermes', 'config.yaml')
 const agentEnvText = readFileSync(agentEnvPath, 'utf8')
 const env = parseEnv(agentEnvText)
 const backend = String(env.ARCOX_API_BASE_URL || 'https://43.163.98.128.nip.io').replace(/\/$/, '')
-const providerBaseUrl = 'https://arc-dex-bice.vercel.app/v1'
+const providerBaseUrl = 'https://arcoxdex.vercel.app/v1'
 const model = 'openai/gpt-oss-120b'
 const privateKey = normalizePrivateKey(env.EOA_PRIVATE_KEY)
 const account = privateKeyToAccount(privateKey)
@@ -136,7 +136,7 @@ function object(value) {
 }
 
 function isArcoxProvider(provider) {
-  return /arc-dex-bice\.vercel\.app|\barcox\b/i.test(String(provider?.base_url || provider?.name || ''))
+  return /arcoxdex\.vercel\.app|arc-dex-bice\.vercel\.app|\barcox\b/i.test(String(provider?.base_url || provider?.name || ''))
 }
 
 function atomicWrite(path, value) {

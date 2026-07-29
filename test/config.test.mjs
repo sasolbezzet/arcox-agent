@@ -53,7 +53,7 @@ test('Hermes provider setup remains available when explicitly requested', async 
   const yaml = parse(readFileSync(join(root, '.hermes', 'config.yaml'), 'utf8'))
   assert.equal(yaml.model.provider, 'custom')
   assert.equal(yaml.model.default, 'openai/gpt-oss-120b')
-  assert.equal(yaml.model.base_url, 'https://arc-dex-bice.vercel.app/v1')
+  assert.equal(yaml.model.base_url, 'https://arcoxdex.vercel.app/v1')
   assert.equal(yaml.model.api_key, 'arx_sk_model')
   assert.equal(yaml.providers?.arcox, undefined)
   assert.equal(yaml.custom_providers.filter(item => item.name === 'ARCOX User').length, 1)

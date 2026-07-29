@@ -8,7 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/sasolbezzet/arcox-agent.git"
   },
-  "homepage": "https://arc-dex-bice.vercel.app/?page=docs",
+  "homepage": "https://arcoxdex.vercel.app/?page=docs",
   "keywords": [
     "arcox",
     "arc",
@@ -32,7 +32,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "arcox-mcp": "^0.1.52",
+    "arcox-mcp": "^0.1.53",
     "yaml": "^2.8.1"
   },
   "overrides": {

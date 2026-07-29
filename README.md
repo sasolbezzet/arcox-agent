@@ -39,7 +39,7 @@ arcox-agent sync --with-provider
 ```
 
 That adds a normal Hermes custom provider named `ARCOX User` using
-`https://arc-dex-bice.vercel.app/v1` and `openai/gpt-oss-120b`. The bearer key is
+`https://arcoxdex.vercel.app/v1` and `openai/gpt-oss-120b`. The bearer key is
 read from `ARCOX_HERMES_API_KEY` or `ARCOX_AI_ROUTER_API_KEY`.
 
 ## Required env
