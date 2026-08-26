@@ -45,6 +45,27 @@ test('Hermes config defaults to MCP-only wiring', async () => {
   assert.equal(config.envSummary().hermesApiKey, true)
 })
 
+test('connection token input is validated and stored outside agent.env', async () => {
+  const { root, template } = setupIsolatedEnv()
+  const config = await import(`../lib/config.mjs?test=${Date.now()}-connection`)
+  config.ensureAgentEnv(template)
+  const token = `arx_at_${'a'.repeat(32)}`
+  const input = `Hubungkan ARCOX. URL server: http://localhost:3901/mcp Token: ${token} Token expires: 2026-11-24T00:00:00.000Z`
+  const parsed = config.parseConnectionInput(input)
+  assert.equal(parsed.url, 'http://localhost:3901/mcp')
+  assert.equal(parsed.token, token)
+  assert.equal(parsed.expiresAt, '2026-11-24T00:00:00.000Z')
+  config.configureHermesConnectionToken(parsed)
+  const yaml = parse(readFileSync(join(root, '.hermes', 'config.yaml'), 'utf8'))
+  assert.equal(yaml.mcp_servers.arcox.url, 'http://localhost:3901/mcp')
+  assert.equal(yaml.mcp_servers.arcox.auth, 'header')
+  assert.equal(yaml.mcp_servers.arcox.headers.Authorization, 'Bearer ${MCP_ARCOX_API_KEY}')
+  assert.equal(config.hermesConnectionToken(), token)
+  assert.equal(readFileSync(config.AGENT_ENV, 'utf8').includes(token), false)
+  assert.equal(config.validateConnectionToken('not-a-token'), false)
+  assert.throws(() => config.parseConnectionInput(`URL server: https://evil.example/mcp Token: ${token}`), /endpoint ARCOX resmi/)
+})
+
 test('Hermes provider setup remains available when explicitly requested', async () => {
   const { root, template } = setupIsolatedEnv()
   const config = await import(`../lib/config.mjs?test=${Date.now()}-provider`)

@@ -17,6 +17,26 @@ to install `arcox-mcp` separately unless they explicitly want only the low-level
 Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp_arcox_*`.
 If you also want ARCOX as the Hermes model provider, either add it manually in Hermes or run `arcox-agent sync --with-provider`.
 
+## Connect an Agent Wallet (recommended)
+
+For the remote production Agent Wallet flow, create a connection token in the ARCOX DEX plugin for the selected agent, then give the generated message to that agent. The helper validates and probes the token before writing the Hermes profile:
+
+```bash
+echo 'URL server: https://arcoxdex.vercel.app/mcp Token: arx_at_...' | arcox-agent connect
+arcox-agent doctor
+```
+
+`connect` requires `initialize` and `tools/list` to succeed before saving the header configuration. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
+
+One owner can have multiple agents, but each agent has a separate `clientId`, MSCA wallet, daily limit, audit scope, card links, and revoke state. Do not reuse one agent's connection token for another agent.
+
+The equivalent native Hermes command is:
+
+```bash
+hermes mcp add arcox --url https://arcoxdex.vercel.app/mcp --auth header
+hermes mcp test arcox
+```
+
 ## What setup does
 
 - Creates `~/.arcox/agent.env` with permission `600` without overwriting an existing file.
@@ -42,7 +62,7 @@ That adds a normal Hermes custom provider named `ARCOX User` using
 `https://arcoxdex.vercel.app/v1` and `openai/gpt-oss-120b`. The bearer key is
 read from `ARCOX_HERMES_API_KEY` or `ARCOX_AI_ROUTER_API_KEY`.
 
-## Required env
+## Environment (all except EOA are optional by flow)
 
 ```bash
 EOA_PRIVATE_KEY=
@@ -52,7 +72,7 @@ ARC_RPC=https://rpc.testnet.arc.network
 ARCOX_HERMES_API_KEY=
 ```
 
-`EOA_PRIVATE_KEY` stays on the user's machine and exclusively authorizes local MCP transactions. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is used only for model access and may be different. Solana is optional.
+`EOA_PRIVATE_KEY` is optional and stays on the user's machine; it exclusively authorizes the legacy local EOA transaction path. Remote Agent Wallet/MSCA connections use the owner-issued connection token instead. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is only for model access and may be different. Solana is optional.
 
 `ARC_RPC` harus menggunakan `https://rpc.testnet.arc.network` (RPC publik sinkron). Jangan pakai `arc-node.thecanteenapp.com` karena tertinggal ~1 blok dan menyebabkan nonce konflik pada transaksi x402 dan swap/bridge/send.
 
@@ -93,6 +113,7 @@ The wallet UI may be used on mobile for wallet approvals. Hermes and MCP still r
 
 ```bash
 arcox-agent setup
+arcox-agent connect
 arcox-agent setup --with-provider
 arcox-agent doctor
 arcox-agent sync
