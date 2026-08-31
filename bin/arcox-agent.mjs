@@ -58,6 +58,8 @@ if (command === 'connect') {
     const probe = await probeMcpConnection(parsed.url, parsed.token)
     configureHermesConnectionToken(parsed)
     console.log(`ARCOX connection verified: ${probe.tools} tools available.`)
+    console.log(`Agent Wallet MSCA: ${probe.walletAddress}`)
+    console.log(`MSCA status: ${probe.active ? 'active' : 'inactive'} (${probe.walletType || 'MSCA'})`)
     console.log('Terhubung. Mulai sesi Hermes baru untuk mengaktifkan tools.')
   } catch (error) {
     console.error(`Connection failed: ${error?.message || error}`)
@@ -88,7 +90,19 @@ if (command === 'doctor') {
     try {
       const result = await probeMcpConnection(hermes.connectionUrl, token)
       const remainingSeconds = state?.expiresAt ? Math.max(0, Math.floor((Date.parse(state.expiresAt) - Date.now()) / 1000)) : null
-      connection = { configured: true, probe: { ok: true, status: 200, tools: result.tools }, expiresAt: state?.expiresAt || null, remainingSeconds }
+      connection = {
+        configured: true,
+        probe: {
+          ok: true,
+          status: 200,
+          tools: result.tools,
+          walletAddress: result.walletAddress || null,
+          walletType: result.walletType || null,
+          active: result.active === true,
+        },
+        expiresAt: state?.expiresAt || null,
+        remainingSeconds,
+      }
     } catch (error) {
       connection = { configured: true, probe: { ok: false, error: error?.message || String(error) }, expiresAt: state?.expiresAt || null, remainingSeconds: null }
     }

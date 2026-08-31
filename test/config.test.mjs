@@ -66,6 +66,63 @@ test('connection token input is validated and stored outside agent.env', async (
   assert.throws(() => config.parseConnectionInput(`URL server: https://evil.example/mcp Token: ${token}`), /endpoint ARCOX resmi/)
 })
 
+test('remote MCP probe resolves the token-bound MSCA instead of a local wallet', async () => {
+  const config = await import(`../lib/config.mjs?test=${Date.now()}-remote-probe`)
+  const token = `arx_at_${'b'.repeat(32)}`
+  const walletAddress = '0x2222222222222222222222222222222222222222'
+  const requests = []
+  const previousFetch = globalThis.fetch
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), authorization: options.headers?.Authorization, body: JSON.parse(options.body) })
+    const body = requests.at(-1).body
+    const payload = body.method === 'initialize'
+      ? { jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-03-26' } }
+      : body.method === 'tools/list'
+        ? { jsonrpc: '2.0', id: body.id, result: { tools: [{ name: 'arcox_session_status' }] } }
+        : { jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: JSON.stringify({ active: true, walletAddress, walletType: 'MSCA' }) }] } }
+    const headers = body.method === 'initialize' ? { 'mcp-session-id': 'probe-session' } : {}
+    return new Response(JSON.stringify(payload), { status: 200, headers })
+  }
+  try {
+    const result = await config.probeMcpConnection('http://localhost:3901/mcp', token)
+    assert.deepEqual(result, {
+      ok: true,
+      status: 200,
+      tools: 1,
+      sessionId: 'probe-session',
+      walletAddress,
+      walletType: 'MSCA',
+      active: true,
+    })
+    assert.equal(requests.length, 3)
+    assert.deepEqual(requests.map(request => request.body.method), ['initialize', 'tools/list', 'tools/call'])
+    assert.ok(requests.every(request => request.authorization === `Bearer ${token}`))
+    assert.equal(requests[2].body.params.name, 'arcox_session_status')
+  } finally {
+    globalThis.fetch = previousFetch
+  }
+})
+
+test('remote MCP probe rejects a connection without an active MSCA', async () => {
+  const config = await import(`../lib/config.mjs?test=${Date.now()}-remote-probe-inactive`)
+  const token = `arx_at_${'c'.repeat(32)}`
+  const previousFetch = globalThis.fetch
+  globalThis.fetch = async (_url, options = {}) => {
+    const body = JSON.parse(options.body)
+    const payload = body.method === 'initialize'
+      ? { jsonrpc: '2.0', id: body.id, result: {} }
+      : body.method === 'tools/list'
+        ? { jsonrpc: '2.0', id: body.id, result: { tools: [] } }
+        : { jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: JSON.stringify({ active: false, message: 'MSCA belum aktif' }) }] } }
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'mcp-session-id': 'probe-session' } })
+  }
+  try {
+    await assert.rejects(config.probeMcpConnection('http://localhost:3901/mcp', token), /MSCA belum aktif/)
+  } finally {
+    globalThis.fetch = previousFetch
+  }
+})
+
 test('Hermes provider setup remains available when explicitly requested', async () => {
   const { root, template } = setupIsolatedEnv()
   const config = await import(`../lib/config.mjs?test=${Date.now()}-provider`)

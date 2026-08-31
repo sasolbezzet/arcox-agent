@@ -26,7 +26,7 @@ echo 'URL server: https://arcoxdex.vercel.app/mcp Token: arx_at_...' | arcox-age
 arcox-agent doctor
 ```
 
-`connect` requires `initialize` and `tools/list` to succeed before saving the header configuration. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
+`connect` requires `initialize`, `tools/list`, and the read-only `arcox_session_status` tool to succeed before saving the header configuration. The command prints the token-bound Agent Wallet MSCA address and active status, so a local EOA or legacy Agent Jobs profile cannot be mistaken for the remote wallet. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
 
 One owner can have multiple agents, but each agent has a separate `clientId`, MSCA wallet, daily limit, audit scope, card links, and revoke state. Do not reuse one agent's connection token for another agent.
 
