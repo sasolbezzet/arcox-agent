@@ -1,6 +1,6 @@
 {
   "name": "arcox-agent",
-  "version": "0.1.20",
+  "version": "0.1.23",
   "type": "module",
   "description": "One-command ARCOX Agent and MCP setup for Hermes.",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "circle"
   ],
   "bin": {
-    "arcox-agent": "bin/arcox-agent.mjs"
+    "arcox-agent": "bin/arcox-agent"
   },
   "files": [
     "bin",
