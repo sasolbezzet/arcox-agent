@@ -131,9 +131,56 @@ async function readConnectionMessage() {
   if (!input.isTTY) return readFileSync(0, 'utf8')
   const rl = createInterface({ input, output })
   try {
-    return await rl.question('Paste pesan koneksi Agent Wallet (token tidak akan ditampilkan):\\n')
+    // Read the URL as ordinary input, then read the bearer token with terminal
+    // echo disabled. This prevents the token appearing on screen, in terminal
+    // scrollback, or in copied TUI transcripts.
+    const message = await rl.question('MCP URL (contoh https://arcoxdex.vercel.app/mcp): ')
+    const token = await readSecret('Token koneksi (input tersembunyi): ')
+    return `${message} Token: ${token}`
   } finally {
     rl.close()
+  }
+}
+
+async function readSecret(prompt) {
+  if (!process.stdin.isTTY) return readFileSync(0, 'utf8').trim()
+  output.write(prompt)
+  const command = process.platform === 'win32' ? 'powershell.exe' : 'stty'
+  if (process.platform === 'win32') {
+    const hidden = await new Promise(resolve => {
+      let value = ''
+      input.setRawMode?.(true)
+      const onData = chunk => {
+        const text = String(chunk)
+        if (text === '\\r' || text === '\\n') {
+          input.off('data', onData)
+          input.setRawMode?.(false)
+          output.write('\\n')
+          resolve(value)
+        } else if (text === '\\u0003') {
+          input.off('data', onData)
+          input.setRawMode?.(false)
+          resolve('')
+        } else if (text === '\\u007f') {
+          value = value.slice(0, -1)
+        } else value += text
+      }
+      input.on('data', onData)
+    })
+    void command
+    return String(hidden).trim()
+  }
+  const original = spawnSync('stty', ['-g'], { stdio: ['inherit', 'pipe', 'ignore'] }).stdout?.toString().trim()
+  spawnSync('stty', ['-echo'], { stdio: 'inherit' })
+  try {
+    const value = await new Promise(resolve => {
+      const onLine = line => { input.off('line', onLine); resolve(line) }
+      input.once('line', onLine)
+    })
+    output.write('\\n')
+    return String(value).trim()
+  } finally {
+    if (original) spawnSync('stty', [original], { stdio: 'inherit' })
   }
 }
 
