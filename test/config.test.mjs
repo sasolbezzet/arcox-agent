@@ -67,6 +67,12 @@ test('connection token input is validated and stored outside agent.env', async (
   assert.throws(() => config.parseConnectionInput(`URL server: https://evil.example/mcp Token: ${token}`), /endpoint ARCOX resmi/)
 })
 
+test('parseRpcResponse accepts Streamable HTTP SSE data records', async () => {
+  const config = await import(`../lib/config.mjs?test=${Date.now()}-sse`)
+  const payload = config.parseRpcResponse('event: message\r\ndata: {"jsonrpc":"2.0","id":7,"result":{"ok":true}}\r\n\r\n')
+  assert.deepEqual(payload, { jsonrpc: '2.0', id: 7, result: { ok: true } })
+})
+
 test('remote MCP probe resolves the token-bound MSCA instead of a local wallet', async () => {
   const config = await import(`../lib/config.mjs?test=${Date.now()}-remote-probe`)
   const token = `arx_at_${'b'.repeat(32)}`
