@@ -189,7 +189,14 @@ async function run(script, childArgs) {
   chmodSync(AGENT_ENV, 0o600)
   const child = spawn(process.execPath, [script, ...childArgs], {
     stdio: 'inherit',
-    env: { ...process.env, ARCOX_AGENT_ENV: AGENT_ENV },
+    // Hermes does not consistently expand ${...} in MCP headers. Inject the
+    // protected connection token only into the child MCP process; never write
+    // it into config.yaml or print it.
+    env: {
+      ...process.env,
+      ARCOX_AGENT_ENV: AGENT_ENV,
+      MCP_ARCOX_API_KEY: hermesConnectionToken() || process.env.MCP_ARCOX_API_KEY || '',
+    },
   })
   const status = await new Promise((resolve) => {
     child.once('error', () => resolve(1))

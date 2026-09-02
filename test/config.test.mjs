@@ -62,6 +62,7 @@ test('connection token input is validated and stored outside agent.env', async (
   assert.equal(yaml.mcp_servers.arcox.headers.Authorization, 'Bearer ${MCP_ARCOX_API_KEY}')
   assert.equal(config.hermesConnectionToken(), token)
   assert.equal(readFileSync(config.AGENT_ENV, 'utf8').includes(token), false)
+  assert.equal(yaml.mcp_servers.arcox.headers.Authorization.includes(token), false)
   assert.equal(config.validateConnectionToken('not-a-token'), false)
   assert.throws(() => config.parseConnectionInput(`URL server: https://evil.example/mcp Token: ${token}`), /endpoint ARCOX resmi/)
 })
