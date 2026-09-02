@@ -1,9 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { createServer } from 'node:http'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
+
+const AGENT_ENTRYPOINT = fileURLToPath(new URL('../bin/arcox-agent.mjs', import.meta.url))
 
 function setupIsolatedEnv() {
   const root = mkdtempSync(join(tmpdir(), 'arcox-agent-'))
@@ -127,6 +132,69 @@ test('remote MCP probe rejects a connection without an active MSCA', async () =>
     await assert.rejects(config.probeMcpConnection('http://localhost:3901/mcp', token), /MSCA belum aktif/)
   } finally {
     globalThis.fetch = previousFetch
+  }
+})
+
+test('connect --prompt-token accepts a piped token when no terminal is available', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'arcox-agent-prompt-'))
+  const token = `arx_at_${'d'.repeat(32)}`
+  const walletAddress = '0x3333333333333333333333333333333333333333'
+  const requests = []
+  const server = createServer((request, response) => {
+    let body = ''
+    request.on('data', chunk => { body += chunk })
+    request.on('end', () => {
+      const payload = JSON.parse(body)
+      requests.push({ method: payload.method, authorization: request.headers.authorization })
+      const result = payload.method === 'initialize'
+        ? { protocolVersion: '2025-03-26' }
+        : payload.method === 'tools/list'
+          ? { tools: [{ name: 'arcox_session_status' }] }
+          : { content: [{ type: 'text', text: JSON.stringify({ active: true, walletAddress, walletType: 'MSCA' }) }] }
+      response.writeHead(200, {
+        'content-type': 'application/json',
+        ...(payload.method === 'initialize' ? { 'mcp-session-id': 'prompt-test-session' } : {}),
+      })
+      response.end(JSON.stringify({ jsonrpc: '2.0', id: payload.id, result }))
+    })
+  })
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const address = server.address()
+  const port = typeof address === 'object' && address ? address.port : 0
+  let stdout = ''
+  let stderr = ''
+  try {
+    const child = spawn(process.execPath, [AGENT_ENTRYPOINT, 'connect', '--prompt-token'], {
+      env: {
+        ...process.env,
+        HOME: root,
+        ARCOX_HOME: join(root, '.arcox'),
+        ARCOX_AGENT_ENV: join(root, '.arcox', 'agent.env'),
+        HERMES_HOME: join(root, '.hermes'),
+        ARCOX_MCP_URL: `http://127.0.0.1:${port}/mcp`,
+        ARCOX_DISABLE_TTY_PROMPT: '1',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    child.stdout.on('data', chunk => { stdout += String(chunk) })
+    child.stderr.on('data', chunk => { stderr += String(chunk) })
+    child.stdin.end(`${token}\\n`)
+    const exitCode = await new Promise(resolve => child.once('exit', code => resolve(code ?? 1)))
+
+    assert.equal(exitCode, 0, stderr)
+    assert.match(stdout, /ARCOX connection verified: 1 tools available\./)
+    assert.match(stdout, new RegExp(walletAddress))
+    assert.equal(stdout.includes(token), false)
+    assert.deepEqual(requests.map(item => item.method), ['initialize', 'tools/list', 'tools/call'])
+    assert.ok(requests.every(item => item.authorization === `Bearer ${token}`))
+    assert.equal(readFileSync(join(root, '.hermes', '.env'), 'utf8').includes(token), true)
+  } finally {
+    await new Promise(resolve => server.close(resolve))
+    rmSync(root, { recursive: true, force: true })
   }
 })
 

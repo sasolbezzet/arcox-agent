@@ -2,8 +2,8 @@
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { spawn } from 'node:child_process'
-import { chmodSync, existsSync, readFileSync, statSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { chmodSync, closeSync, createReadStream, createWriteStream, existsSync, openSync, readFileSync, statSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import {
@@ -34,7 +34,7 @@ const args = process.argv.slice(3)
 const wantsHelp = args.includes('--help') || args.includes('-h')
 
 if (wantsHelp && ['setup', 'connect', 'sync', 'doctor', 'mcp', 'serve', 'run'].includes(command)) {
-  console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup [--with-provider]    Configure env and Hermes MCP\n  arcox-agent connect [message]          Save and verify an Agent Wallet connection token\n  arcox-agent doctor                     Verify installation without exposing secrets\n  arcox-agent sync [--with-provider]     Reapply Hermes MCP and optional provider\n  arcox-agent mcp                        Start the stdio MCP server\n  arcox-agent run "prompt"               Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
+  console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup [--with-provider]    Configure env and Hermes MCP\n  arcox-agent connect [message]          Save and verify an Agent Wallet connection token\n  arcox-agent connect --prompt-token     Read the token securely from a prompt/stdin\n  arcox-agent doctor                     Verify installation without exposing secrets\n  arcox-agent sync [--with-provider]     Reapply Hermes MCP and optional provider\n  arcox-agent mcp                        Start the stdio MCP server\n  arcox-agent run "prompt"               Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
   process.exit(0)
 }
 
@@ -49,7 +49,9 @@ if (command === 'setup') {
 }
 
 if (command === 'connect') {
-  const raw = args.filter(arg => !['--help', '-h'].includes(arg)).join(' ').trim() || await readConnectionMessage()
+  const promptToken = args.includes('--prompt-token')
+  const connectionArgs = args.filter(arg => !['--help', '-h', '--prompt-token'].includes(arg))
+  const raw = connectionArgs.join(' ').trim() || await readConnectionMessage({ useConfiguredUrl: promptToken })
   let parsed
   try {
     parsed = parseConnectionInput(raw)
@@ -125,62 +127,119 @@ if (command === 'sync') {
 if (command === 'run') await run(runtimeCli, args)
 if (!['help', '--help', '-h'].includes(command)) await run(runtimeCli, [command, ...args])
 
-console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup [--with-provider]    Configure env and Hermes MCP\n  arcox-agent connect [message]          Save and verify an Agent Wallet connection token\n  arcox-agent doctor                     Verify installation without exposing secrets\n  arcox-agent sync [--with-provider]     Reapply Hermes MCP and optional provider\n  arcox-agent mcp                        Start the stdio MCP server\n  arcox-agent run "prompt"               Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
+console.log(`ARCOX Agent\n\nCommands:\n  arcox-agent setup [--with-provider]    Configure env and Hermes MCP\n  arcox-agent connect [message]          Save and verify an Agent Wallet connection token\n  arcox-agent connect --prompt-token     Read the token securely from a prompt/stdin\n  arcox-agent doctor                     Verify installation without exposing secrets\n  arcox-agent sync [--with-provider]     Reapply Hermes MCP and optional provider\n  arcox-agent mcp                        Start the stdio MCP server\n  arcox-agent run "prompt"               Run the terminal agent\n\nEnvironment:\n  ${AGENT_ENV}`)
 
-async function readConnectionMessage() {
-  if (!input.isTTY) return readFileSync(0, 'utf8')
+async function readConnectionMessage({ useConfiguredUrl = false } = {}) {
+  const configuredUrl = useConfiguredUrl ? String(process.env.ARCOX_MCP_URL || '').trim() : ''
+
+  // The dashboard-generated command supplies the public URL out-of-band and
+  // asks only for the secret. Prefer the controlling terminal even when the
+  // parent TUI launched this process with a non-TTY stdin.
+  if (configuredUrl) {
+    const token = await readSecret('Token koneksi (input tersembunyi): ', { preferTty: true })
+    return `${configuredUrl} Token: ${token}`
+  }
+
+  if (!input.isTTY) {
+    const piped = readFileSync(0, 'utf8').trim()
+    if (!piped) throw new Error('Token koneksi tidak diterima. Jalankan di terminal interaktif atau pipe pesan koneksi ke stdin.')
+    // Preserve the backwards-compatible `echo 'URL ... Token ...' | connect`
+    // form when no URL was supplied through ARCOX_MCP_URL.
+    return piped
+  }
+
   const rl = createInterface({ input, output })
+  let message
   try {
-    // Read the URL as ordinary input, then read the bearer token with terminal
-    // echo disabled. This prevents the token appearing on screen, in terminal
-    // scrollback, or in copied TUI transcripts.
-    const message = await rl.question('MCP URL (contoh https://arcoxdex.vercel.app/mcp): ')
-    const token = await readSecret('Token koneksi (input tersembunyi): ')
-    return `${message} Token: ${token}`
+    message = await rl.question('MCP URL (contoh https://arcoxdex.vercel.app/mcp): ')
   } finally {
     rl.close()
   }
+  const token = await readSecret('Token koneksi (input tersembunyi): ')
+  return `${message} Token: ${token}`
 }
 
-async function readSecret(prompt) {
-  if (!process.stdin.isTTY) return readFileSync(0, 'utf8').trim()
-  output.write(prompt)
-  const command = process.platform === 'win32' ? 'powershell.exe' : 'stty'
-  if (process.platform === 'win32') {
-    const hidden = await new Promise(resolve => {
-      let value = ''
-      input.setRawMode?.(true)
-      const onData = chunk => {
-        const text = String(chunk)
-        if (text === '\\r' || text === '\\n') {
-          input.off('data', onData)
-          input.setRawMode?.(false)
-          output.write('\\n')
-          resolve(value)
-        } else if (text === '\\u0003') {
-          input.off('data', onData)
-          input.setRawMode?.(false)
-          resolve('')
-        } else if (text === '\\u007f') {
-          value = value.slice(0, -1)
-        } else value += text
+async function readSecret(prompt, { preferTty = false } = {}) {
+  if (preferTty && process.env.ARCOX_DISABLE_TTY_PROMPT !== '1') {
+    const tty = openControllingTerminal()
+    if (tty) {
+      try {
+        return await readSecretFromStreams(prompt, tty.input, tty.output, tty.fd)
+      } finally {
+        tty.input.destroy()
+        tty.output.destroy()
+        try { closeSync(tty.fd) } catch { /* already closed */ }
       }
-      input.on('data', onData)
-    })
-    void command
-    return String(hidden).trim()
+    }
   }
-  const original = spawnSync('stty', ['-g'], { stdio: ['inherit', 'pipe', 'ignore'] }).stdout?.toString().trim()
-  spawnSync('stty', ['-echo'], { stdio: 'inherit' })
+
+  if (!input.isTTY) return readFileSync(0, 'utf8').trim()
+  if (process.platform === 'win32') return readSecretFromWindows(prompt)
+  return readSecretFromStreams(prompt, input, output, null)
+}
+
+function openControllingTerminal() {
+  if (process.platform === 'win32' || !existsSync('/dev/tty')) return null
+  let fd = -1
   try {
-    const value = await new Promise(resolve => {
-      const onLine = line => { input.off('line', onLine); resolve(line) }
-      input.once('line', onLine)
-    })
-    output.write('\\n')
+    fd = openSync('/dev/tty', 'r+')
+    return {
+      fd,
+      input: createReadStream('/dev/tty'),
+      output: createWriteStream('/dev/tty'),
+    }
+  } catch {
+    if (fd >= 0) {
+      try { closeSync(fd) } catch { /* ignore cleanup failure */ }
+    }
+    return null
+  }
+}
+
+async function readSecretFromWindows(prompt) {
+  output.write(prompt)
+  input.setRawMode?.(true)
+  return new Promise(resolve => {
+    let value = ''
+    const onData = chunk => {
+      const text = String(chunk)
+      if (text === '\\r' || text === '\\n') {
+        input.off('data', onData)
+        input.setRawMode?.(false)
+        output.write('\\n')
+        resolve(value.trim())
+      } else if (text === '\\u0003') {
+        input.off('data', onData)
+        input.setRawMode?.(false)
+        output.write('\\n')
+        resolve('')
+      } else if (text === '\\u007f') {
+        value = value.slice(0, -1)
+      } else {
+        value += text
+      }
+    }
+    input.on('data', onData)
+  })
+}
+
+async function readSecretFromStreams(prompt, secretInput, secretOutput, fd) {
+  const stateOptions = { stdio: fd === null ? ['inherit', 'pipe', 'ignore'] : [fd, 'pipe', 'ignore'] }
+  const terminalState = spawnSync('stty', ['-g'], stateOptions).stdout?.toString().trim() || ''
+  if (terminalState) {
+    spawnSync('stty', ['-echo'], { stdio: fd === null ? ['inherit', 'ignore', 'ignore'] : [fd, 'ignore', 'ignore'] })
+  }
+  secretOutput.write(prompt)
+  const rl = createInterface({ input: secretInput, output: secretOutput })
+  try {
+    const value = await rl.question('')
     return String(value).trim()
   } finally {
-    if (original) spawnSync('stty', [original], { stdio: 'inherit' })
+    rl.close()
+    if (terminalState) {
+      spawnSync('stty', [terminalState], { stdio: fd === null ? ['inherit', 'ignore', 'ignore'] : [fd, 'ignore', 'ignore'] })
+    }
+    secretOutput.write('\\n')
   }
 }
 

@@ -22,11 +22,11 @@ If you also want ARCOX as the Hermes model provider, either add it manually in H
 For the remote production Agent Wallet flow, create a connection token in the ARCOX DEX plugin for the selected agent, then give the generated message to that agent. The helper validates and probes the token before writing the Hermes profile:
 
 ```bash
-echo 'URL server: https://arcoxdex.vercel.app/mcp Token: arx_at_...' | arcox-agent connect
+ARCOX_MCP_URL=https://arcoxdex.vercel.app/mcp arcox-agent connect --prompt-token
 arcox-agent doctor
 ```
 
-`connect` requires `initialize`, `tools/list`, and the read-only `arcox_session_status` tool to succeed before saving the header configuration. The command prints the token-bound Agent Wallet MSCA address and active status, so a local EOA or legacy Agent Jobs profile cannot be mistaken for the remote wallet. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
+`--prompt-token` reads the token from a hidden terminal prompt (or stdin when no terminal is available), so the bearer value is not placed in shell history or process arguments. `connect` requires `initialize`, `tools/list`, and the read-only `arcox_session_status` tool to succeed before saving the header configuration. The command prints the token-bound Agent Wallet MSCA address and active status, so a local EOA or legacy Agent Jobs profile cannot be mistaken for the remote wallet. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
 
 One owner can have multiple agents, but each agent has a separate `clientId`, MSCA wallet, daily limit, audit scope, card links, and revoke state. Do not reuse one agent's connection token for another agent.
 
