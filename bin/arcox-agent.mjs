@@ -229,7 +229,7 @@ async function readSecretFromStreams(prompt, secretInput, secretOutput, fd) {
   if (terminalState) {
     spawnSync('stty', ['-echo'], { stdio: fd === null ? ['inherit', 'ignore', 'ignore'] : [fd, 'ignore', 'ignore'] })
   }
-  secretOutput.write(prompt)
+  await writeTerminal(secretOutput, prompt)
   const rl = createInterface({ input: secretInput, output: secretOutput })
   try {
     const value = await rl.question('')
@@ -239,8 +239,27 @@ async function readSecretFromStreams(prompt, secretInput, secretOutput, fd) {
     if (terminalState) {
       spawnSync('stty', [terminalState], { stdio: fd === null ? ['inherit', 'ignore', 'ignore'] : [fd, 'ignore', 'ignore'] })
     }
-    secretOutput.write('\\n')
+    // The controlling TTY is destroyed immediately after this function
+    // returns. Wait for the newline write to flush first; otherwise Node 22
+    // emits ERR_STREAM_DESTROYED from the WriteStream on the next tick.
+    await writeTerminal(secretOutput, '\\n').catch(() => {})
   }
+}
+
+function writeTerminal(stream, value) {
+  if (!stream || stream.destroyed || stream.writableEnded) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const onError = error => {
+      stream.off('error', onError)
+      reject(error)
+    }
+    stream.once('error', onError)
+    stream.write(value, error => {
+      stream.off('error', onError)
+      if (error) reject(error)
+      else resolve()
+    })
+  })
 }
 
 async function run(script, childArgs) {
