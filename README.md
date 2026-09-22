@@ -17,6 +17,15 @@ to install `arcox-mcp` separately unless they explicitly want only the low-level
 Restart Hermes after setup. ARCOX MCP tools are discovered automatically as `mcp_arcox_*`.
 If you also want ARCOX as the Hermes model provider, either add it manually in Hermes or run `arcox-agent sync --with-provider`.
 
+Origin produksi (web + API + MCP) adalah satu alamat, jadi tidak ada URL VPS di
+konfigurasi agent:
+
+```text
+Web : https://arcoxdex.vercel.app
+MCP : https://arcoxdex.vercel.app/mcp
+API : https://arcoxdex.vercel.app/v1   (OpenAI-compatible, ARCOX AI Router)
+```
+
 ## Connect an Agent Wallet (recommended)
 
 For the remote production Agent Wallet flow, create a connection token in the ARCOX DEX plugin for the selected agent, then give the generated message to that agent. The helper validates and probes the token before writing the Hermes profile:
@@ -29,6 +38,25 @@ arcox-agent doctor
 `--prompt-token` reads the token from a hidden terminal prompt (or stdin when no terminal is available), so the bearer value is not placed in shell history or process arguments. `connect` requires `initialize`, `tools/list`, and the read-only `arcox_session_status` tool to succeed before saving the header configuration. The command prints the token-bound Agent Wallet MSCA address and active status, so a local EOA or legacy Agent Jobs profile cannot be mistaken for the remote wallet. The token is stored in the Hermes profile credential file with mode `600`; it is not placed in `~/.arcox/agent.env`, printed, or logged. Start a new Hermes session after a successful connection.
 
 One owner can have multiple agents, but each agent has a separate `clientId`, MSCA wallet, daily limit, audit scope, card links, and revoke state. Do not reuse one agent's connection token for another agent.
+
+Agent di web (Grok, Claude, ChatGPT) tidak memakai `arcox-agent connect`.
+Mereka memakai OAuth remote MCP ke `https://arcoxdex.vercel.app/mcp`, lalu user
+menyelesaikan halaman approval Plugin ARCOX dengan passkey. Untuk agent yang
+belum punya wallet, halaman itu juga yang membuat Agent Wallet baru dan
+mengotorisasi delegate di Arc + Base Sepolia + Arbitrum Sepolia.
+
+Nama passkey selalu memuat nama agent dan nomor unik, mis.
+`Agent Wallet Grok #01`, `Agent Wallet Hermes #01`, supaya beberapa wallet pada
+agent yang sama tidak tertukar saat memilih di dialog passkey.
+
+Jika agent sudah tampak terhubung tetapi tidak menemukan tool ARCOX, hampir
+selalu penyebabnya token belum terbit (approval belum selesai), bukan masalah
+daftar tool. Verifikasi:
+
+```bash
+cd /home/ubuntu/arc-dex-api
+npm run diag:mcp -- --agent grok     # atau: npm run diag:mcp
+```
 
 The equivalent native Hermes command is:
 
@@ -67,9 +95,11 @@ read from `ARCOX_HERMES_API_KEY` or `ARCOX_AI_ROUTER_API_KEY`.
 ```bash
 EOA_PRIVATE_KEY=
 ARCOX_AI_ROUTER_API_KEY=
-ARC_RPC=https://rpc.testnet.arc.network
-# Optional when Hermes should use a different ARCOX model credential:
 ARCOX_HERMES_API_KEY=
+ARCOX_API_BASE_URL=https://arcoxdex.vercel.app
+ARCOX_API_URL=https://arcoxdex.vercel.app
+ARCOX_WEB_URL=https://arcoxdex.vercel.app
+ARC_RPC=https://rpc.testnet.arc.network
 ```
 
 `EOA_PRIVATE_KEY` is optional and stays on the user's machine; it exclusively authorizes the legacy local EOA transaction path. Remote Agent Wallet/MSCA connections use the owner-issued connection token instead. `ARCOX_AI_ROUTER_API_KEY` is used by AI Router-specific MCP calls. `ARCOX_HERMES_API_KEY`, when set, is only for model access and may be different. Solana is optional.
@@ -123,3 +153,16 @@ arcox-agent run "bridge 1 USDC from Arc to Base"
 ```
 
 All value-moving MCP tools retain quote-before-execute and explicit confirmation requirements.
+
+## Troubleshooting koneksi MCP
+
+| Gejala | Penyebab paling sering | Tindakan |
+|---|---|---|
+| Agent menampilkan “terhubung” tetapi tidak ada/tidak bisa membaca tool | approval OAuth di halaman Plugin belum selesai, jadi token belum pernah terbit | ulangi connect, selesaikan approval passkey sampai redirect balik; cek dengan `npm run diag:mcp -- --agent <nama>` |
+| `tools/list` balik 401 | token kedaluwarsa/dicabut, atau token milik agent lain | Relogin dari kartu agent di halaman Plugin |
+| Tool muncul tetapi eksekusi gagal `session inactive` | Agent Wallet belum aktif / delegate belum diotorisasi | Login Passkey atau Buat Wallet Baru di kartu agent, lalu setujui passkey |
+| Agent membaca tool tetapi berbeda daftar | `clientId` beda (satu agent = satu wallet) | pakai konfigurasi agent yang benar; jangan pakai token bersama |
+
+Token koneksi/MCP berlaku 24 jam dan refresh 30 hari; pencabutan per agent
+memakai tombol **Cabut Akses** (Revoke) di kartu agent, sedangkan **Hapus**
+(Clear) menghapus kartu dan memerlukan passkey + SIWE untuk login kembali.
